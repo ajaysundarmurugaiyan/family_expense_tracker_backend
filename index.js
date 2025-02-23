@@ -62,7 +62,7 @@ app.post('/api/auth/register', async (req, res) => {
         }
 
         // Check if family already exists
-        const existingFamily = await Family.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
+        const existingFamily = await Family.findOne({ name: name });
         if (existingFamily) {
             console.log('Family name already exists:', name);
             return res.status(400).json({ message: 'Family name already exists' });
