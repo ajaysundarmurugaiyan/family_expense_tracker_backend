@@ -348,40 +348,44 @@ app.post('/api/family/:familyId/members/:memberId/expenses', auth, async (req, r
 // Delete expense
 app.delete('/api/family/:familyId/members/:memberId/expenses/:expenseId', auth, async (req, res) => {
     try {
-        const family = await Family.findById(req.params.familyId);
+        const { familyId, memberId, expenseId } = req.params;
+
+        // Find the family
+        const family = await Family.findById(familyId);
         if (!family) {
             return res.status(404).json({ message: 'Family not found' });
         }
 
-        const member = family.members.id(req.params.memberId);
+        // Find the member
+        const member = family.members.id(memberId);
         if (!member) {
             return res.status(404).json({ message: 'Member not found' });
         }
 
-        const expense = member.expenses.id(req.params.expenseId);
+        // Find the expense
+        const expense = member.expenses.id(expenseId);
         if (!expense) {
             return res.status(404).json({ message: 'Expense not found' });
         }
 
+        // Deduct the expense amount before removing
         member.totalSpent -= expense.amount;
-        expense.remove();
+
+        // Remove the expense from the array
+        member.expenses = member.expenses.filter(exp => exp._id.toString() !== expenseId);
+
+        // Save the updated family document
         await family.save();
 
-        console.log('Expense deleted:', { 
-            familyId: family._id, 
-            memberId: member._id,
-            expenseId: req.params.expenseId
-        });
+        console.log('Expense deleted successfully:', { familyId, memberId, expenseId });
 
-        res.json(family);
+        res.json({ message: "Expense deleted successfully!" });
     } catch (error) {
         console.error('Error deleting expense:', error);
-        res.status(500).json({ 
-            message: 'Error deleting expense',
-            error: error.message
-        });
+        res.status(500).json({ message: 'Error deleting expense', error: error.message });
     }
 });
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
