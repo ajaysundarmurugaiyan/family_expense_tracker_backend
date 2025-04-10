@@ -105,16 +105,23 @@ familySchema.methods.comparePassword = async function(candidatePassword) {
 // Calculate totals before saving
 familySchema.pre('save', function(next) {
     try {
-        // Calculate total income
+        // Calculate total income (sum of salaries of earning members)
         this.totalIncome = this.members.reduce((sum, member) => {
             return sum + (member.isEarning ? member.salary : 0);
         }, 0);
 
         // Calculate total expenses and update member totalSpent
         this.totalExpenses = this.members.reduce((sum, member) => {
+            // Calculate total spent for each member
             member.totalSpent = member.expenses.reduce((expSum, exp) => expSum + exp.amount, 0);
             return sum + member.totalSpent;
         }, 0);
+
+        console.log('Totals calculated:', {
+            totalIncome: this.totalIncome,
+            totalExpenses: this.totalExpenses,
+            memberCount: this.members.length
+        });
 
         next();
     } catch (error) {
