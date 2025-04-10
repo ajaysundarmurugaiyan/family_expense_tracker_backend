@@ -266,28 +266,49 @@ app.put('/api/family/:familyId/members/:memberId', auth, async (req, res) => {
 // Delete family member
 app.delete('/api/family/:familyId/members/:memberId', auth, async (req, res) => {
     try {
-        const family = await Family.findOneAndUpdate(
-            { _id: req.params.familyId },
-            { 
-                $pull: { 
-                    members: { 
-                        _id: req.params.memberId 
-                    } 
-                } 
-            },
-            { 
-                new: true,
-                runValidators: true
-            }
-        );
-
+        // Find the family
+        const family = await Family.findById(req.params.familyId);
         if (!family) {
             return res.status(404).json({ message: 'Family not found' });
         }
 
+        // Find the member to be deleted
+        const member = family.members.id(req.params.memberId);
+        if (!member) {
+            return res.status(404).json({ message: 'Member not found' });
+        }
+
+        // Store the member's data before deletion for logging
+        const deletedMemberData = {
+            name: member.name,
+            isEarning: member.isEarning,
+            salary: member.salary,
+            totalSpent: member.totalSpent
+        };
+
+        // Remove the member from the family array
+        family.members = family.members.filter(m => m._id.toString() !== req.params.memberId);
+
+        // Recalculate total income (sum of salaries of remaining members)
+        family.totalIncome = family.members.reduce((sum, m) => sum + (m.isEarning ? m.salary : 0), 0);
+
+        // Recalculate total expenses (sum of all expenses from remaining members)
+        family.totalExpenses = family.members.reduce((sum, m) => {
+            // Calculate total spent for each member
+            m.totalSpent = m.expenses.reduce((expSum, exp) => expSum + exp.amount, 0);
+            return sum + m.totalSpent;
+        }, 0);
+
+        // Save the updated family document
+        await family.save();
+
         console.log('Member deleted:', { 
             familyId: req.params.familyId, 
-            memberId: req.params.memberId 
+            memberId: req.params.memberId,
+            deletedMember: deletedMemberData,
+            newTotalIncome: family.totalIncome,
+            newTotalExpenses: family.totalExpenses,
+            remainingMembers: family.members.length
         });
 
         res.json(family);
@@ -344,48 +365,6 @@ app.post('/api/family/:familyId/members/:memberId/expenses', auth, async (req, r
         });
     }
 });
-
-// Delete expense
-app.delete('/api/family/:familyId/members/:memberId/expenses/:expenseId', auth, async (req, res) => {
-    try {
-        const { familyId, memberId, expenseId } = req.params;
-
-        // Find the family
-        const family = await Family.findById(familyId);
-        if (!family) {
-            return res.status(404).json({ message: 'Family not found' });
-        }
-
-        // Find the member
-        const member = family.members.id(memberId);
-        if (!member) {
-            return res.status(404).json({ message: 'Member not found' });
-        }
-
-        // Find the expense
-        const expense = member.expenses.id(expenseId);
-        if (!expense) {
-            return res.status(404).json({ message: 'Expense not found' });
-        }
-
-        // Deduct the expense amount before removing
-        member.totalSpent -= expense.amount;
-
-        // Remove the expense from the array
-        member.expenses = member.expenses.filter(exp => exp._id.toString() !== expenseId);
-
-        // Save the updated family document
-        await family.save();
-
-        console.log('Expense deleted successfully:', { familyId, memberId, expenseId });
-
-        res.json({ message: "Expense deleted successfully!" });
-    } catch (error) {
-        console.error('Error deleting expense:', error);
-        res.status(500).json({ message: 'Error deleting expense', error: error.message });
-    }
-});
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
