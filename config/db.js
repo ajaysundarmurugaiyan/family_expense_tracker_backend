@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
     try {
         mongoose.set('strictQuery', false);
-        const mongoURI =  'mongodb+srv://ceitajaysundar25:Ajaysundar%4012345@cluster0.nwpnc.mongodb.net/family-expense-tracker';
+        const mongoURI = 'mongodb+srv://ceitajaysundar25:Ajaysundar%4012345@cluster0.nwpnc.mongodb.net/family-expense-tracker';
         const conn = await mongoose.connect(mongoURI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
@@ -12,7 +12,8 @@ const connectDB = async () => {
         });
 
         console.log('MongoDB Connection Status:', mongoose.connection.readyState);
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
+        console.log(`MongoDB Connected: ${conn}`);
+        console.log(mongoURI);
         
         // Set up error event listeners
         mongoose.connection.on('error', err => {
